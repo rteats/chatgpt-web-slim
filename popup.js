@@ -1,7 +1,7 @@
 "use strict";
 
 const defaults = {
-  offscreenRendering: true,
+  offscreenRendering: false,
   shorterTransitions: false
 };
 
