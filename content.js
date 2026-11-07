@@ -55,14 +55,18 @@
       return;
     }
 
-    // Use actual *pre-containment* heights, not arbitrary fixed placeholders.
-    // Only distant blocks receive containment; never the active/final turns.
+    // CRITICAL: perform all layout reads before any CSS/DOM writes.
+    // Mixing getBoundingClientRect with mutations in this loop causes
+    // synchronous style/layout recalculation for every subsequent turn.
     const viewport = Math.max(window.innerHeight, 1);
     const active = document.activeElement;
+    const updates = [];
+    const clears = [];
+
     for (let i = 0; i < turns.length; i++) {
       const turn = turns[i];
       if (i >= turns.length - 2 || (active && turn.contains(active))) {
-        if (turn.hasAttribute(ATTR)) unmark(turn);
+        if (turn.hasAttribute(ATTR)) clears.push(turn);
         continue;
       }
       if (turn.hasAttribute(ATTR)) continue;
@@ -70,11 +74,15 @@
       if (!Number.isFinite(rect.height) || rect.height < 24) continue;
       const distant = rect.bottom < -viewport * 0.5 ||
         rect.top > viewport * 1.75;
-      if (!distant) continue;
+      if (distant) {
+        updates.push([turn, Math.ceil(rect.height)]);
+      }
+    }
 
-      turn.style.setProperty(
-        "--web-slim-height", Math.ceil(rect.height) + "px"
-      );
+    // Writes happen in one batch, after all geometry reads finish.
+    for (const turn of clears) unmark(turn);
+    for (const [turn, height] of updates) {
+      turn.style.setProperty("--web-slim-height", height + "px");
       turn.setAttribute(ATTR, "1");
     }
   }
