@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ChatGPT Web Slim</title>
+  <link rel="stylesheet" href="popup.css">
+  <script src="popup.js" defer></script>
+</head>
+<body>
+  <main>
+    <h1>ChatGPT Web Slim <small>0.1</small></h1>
+    <p class="muted">Local experiments. No chat data collected or sent.</p>
+    <label class="toggle">
+      <input type="checkbox" id="offscreenRendering">
+      <span><strong>Optimize offscreen turns</strong><small>Experimental. Activates in chats with 24+ turns; disable if scroll position jumps.</small></span>
+    </label>
+    <label class="toggle">
+      <input type="checkbox" id="shorterTransitions">
+      <span><strong>Shorter transitions</strong><small>Optional perceived-speed adjustment; does not make JavaScript execute faster.</small></span>
+    </label>
+    <section aria-live="polite">
+      <h2>Current tab</h2>
+      <p id="status" class="muted">Connecting…</p>
+      <dl id="stats" hidden>
+        <dt>Conversation turns</dt><dd id="turns">—</dd>
+        <dt>Offscreen contained</dt><dd id="contained">—</dd>
+        <dt>Long tasks (50ms+)</dt><dd id="longTasks">—</dd>
+        <dt>Blocking time over 50ms</dt><dd id="blocking">—</dd>
+        <dt>Resource entries</dt><dd id="resources">—</dd>
+        <dt>Likely cached resources</dt><dd id="cached">—</dd>
+        <dt>DOMContentLoaded</dt><dd id="dcl">—</dd>
+        <dt>Load event</dt><dd id="load">—</dd>
+      </dl>
+      <button type="button" id="refresh">Refresh measurements</button>
+    </section>
+    <p class="foot">These are diagnostic estimates, not proof of a performance gain. Compare Chrome Performance recordings with the switch on and off.</p>
+  </main>
+</body>
+</html>

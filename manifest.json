@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "ChatGPT Web Slim",
+  "version": "0.1.0",
+  "description": "Opt-in long-chat rendering and responsiveness experiments with local performance diagnostics.",
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "action": {
+    "default_title": "ChatGPT Web Slim",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
