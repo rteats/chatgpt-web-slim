@@ -28,10 +28,10 @@ def analyze(data):
     caches = collections.Counter(e.get("_fromCache", "network/unknown") for e in entries)
     js = [e for e in entries if e.get("_resourceType") == "script"]
     css = [e for e in entries if e.get("_resourceType") == "stylesheet"]
-    compressed = sum(
-        max(0, e.get("response", {}).get("bodySize", -1))
-        for e in entries
-    )
+    reported = [e.get("response", {}).get("bodySize", -1) for e in entries]
+    compressed = sum(n for n in reported if n >= 0) if any(
+        n >= 0 for n in reported
+    ) else None
     decoded_js = sum(
         max(0, e.get("response", {}).get("content", {}).get("size", 0))
         for e in js
