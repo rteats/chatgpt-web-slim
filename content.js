@@ -25,9 +25,9 @@
       "content-visibility:auto !important;" +
       "contain-intrinsic-block-size:auto var(--web-slim-height, 480px) !important;" +
       "}" +
-      'html[data-web-slim-motion="1"] *, ' +
-      'html[data-web-slim-motion="1"] *::before, ' +
-      'html[data-web-slim-motion="1"] *::after {' +
+      'html[data-web-slim-motion] *, ' +
+      'html[data-web-slim-motion] *::before, ' +
+      'html[data-web-slim-motion] *::after {' +
       "transition-duration:1ms !important;" +
       "scroll-behavior:auto !important;" +
       "}";
