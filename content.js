@@ -7,7 +7,7 @@
   const CSS_ID = "chatgpt-web-slim-style";
   const MIN_TURNS = 24;
   const defaults = {
-    offscreenRendering: true,
+    offscreenRendering: false,
     shorterTransitions: false
   };
   let settings = { ...defaults };
