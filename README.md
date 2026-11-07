@@ -13,7 +13,7 @@ No build, package manager, API key, or login is needed. Install only from source
 
 ## What v0.1 does
 
-- **Long-chat rendering:** when a page contains 24+ conversation turns, apply CSS content-visibility:auto to *distant, already measured* turns, preserving their measured approximate height. The active and last two turns are left untouched. Enabled by default, but experimental. If scrolling, find-in-page, keyboard navigation, or jumps become worse, switch it off in the popup.
+- **Long-chat rendering:** when a page contains 24+ conversation turns, apply CSS content-visibility:auto to *distant, already measured* turns, preserving their measured approximate height. The active and last two turns are left untouched. Disabled by default until live A/B testing demonstrates a benefit; enable from the popup to experiment. If scrolling, find-in-page, keyboard navigation, or jumps become worse, switch it off in the popup.
 - **Shorter transitions:** optional CSS tweak to reduce transition durations. Disabled by default. This affects appearance, not script execution.
 - **Local diagnostics:** popup reports conversation turn count, number of contained turns, long tasks, an estimate of total blocking duration beyond 50ms per task, page event timings, and resource counts. No conversation contents, API responses, identifiers, or timestamps are persisted or sent.
 
