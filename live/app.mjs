@@ -5,6 +5,7 @@ const diagnostics=new Diagnostics();
 const api=new ChatReader({onDiagnostic:(event,details)=>diagnostics.add(event,details)}),$=s=>document.querySelector(s);
 const connect=$("#connect"),more=$("#more"),older=$("#older"),plugins=$("#plugins");
 const sessionButton=$("#check-session"),sessionInfo=$("#session-info");
+const originalButton=$("#open-original"),accountStatus=$("#account-status");
 const search=$("#search"),list=$("#conversations"),messages=$("#messages");
 const status=$("#status"),title=$("#title"),count=$("#count"),pluginSummary=$("#plugin-summary");
 let items=[],offset=0,total=0,selected=null,rows=[],page=null,busy=false;
@@ -147,6 +148,24 @@ document.addEventListener("keydown",e=>{
   e.preventDefault();search.focus();search.select();
  }
 });
+
+async function refreshAccountStatus(){
+ try{
+  const result=await chrome.runtime.sendMessage({type:"WEB_SLIM_GET_ACCOUNT"});
+  accountStatus.textContent=result?.accountId?
+   "Аккаунт определён из запросов официального сайта. Можно подключаться.":
+   "Аккаунт ещё не определён. Откройте обычный ChatGPT, дождитесь загрузки истории, затем вернитесь.";
+ }catch{
+  accountStatus.textContent="Не удалось прочитать состояние расширения. Обновите его в chrome://extensions.";
+ }
+}
+originalButton.addEventListener("click",()=>{
+ chrome.tabs.create({url:"https://chatgpt.com/"});
+});
+chrome.storage.onChanged.addListener((changes,area)=>{
+ if(area==="session"&&changes.capturedAccountId)refreshAccountStatus();
+});
+refreshAccountStatus();
 
 $("#export-logs").addEventListener("click",()=>diagnostics.download());
 window.addEventListener("error",()=>diagnostics.add("runtime_error",{operation:"unknown"}));
