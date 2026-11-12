@@ -48,3 +48,16 @@ The Live Reader now has a **Скачать диагностический лог
 For any error not explained by the JSON diagnostics, also capture DevTools Console errors from the **Live Reader tab** (F12 → Console → Preserve log → reproduce → Save as). If a request fails, capture Network → Preserve log → **Export HAR (sanitized)** and inspect for identifiers/tokens before sharing. Do not publish any raw HAR, screenshot of private chats, or full trace publicly.
 
 Tell the developer what action failed (connecting, opening a chat, older messages, plugin list), how often it happens, whether a clean-browser profile reproduces it, and whether the site itself works.
+
+
+## Debugging an empty list (HTTP 200)
+
+If the list shows zero chats while the regular site has conversations:
+
+1. Press **Проверить текущую сессию**. The app requests GET /backend-api/me on demand.
+2. Compare the *locally displayed, partially masked* email with the ChatGPT account you're using in the same browser profile.
+3. Press **Подключиться / обновить список** once more.
+4. Download **web-slim-diagnostics.json** and share it privately. Diagnostic records contain only HTTP status, error category, response MIME category, operation type, durations and counts. They contain **no account email** or chat content.
+5. If the session matches but the list remains empty, open DevTools → Network on the extension page, click the GET /backend-api/conversations request and check its Response tab locally. Do **not** publish it: it contains conversation IDs and titles.
+
+A 200 response with an empty JSON list is not a CORS error. A 200 HTML response in place of JSON can indicate an authentication redirect, an interstitial or an unexpected backend response. The extension cannot infer the exact cause without a reproducible response shape. It deliberately does not try to evade access controls or replay session tokens.
