@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ru"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>Web Slim — Live Reader</title>
+<link rel="stylesheet" href="style.css"><script type="module" src="app.mjs"></script>
+</head><body><div class="shell"><aside class="sidebar">
+<h1>Web Slim <small>Live Reader</small></h1>
+<p>Отдельный интерфейс без JavaScript исходного ChatGPT</p>
+<button id="connect" type="button">Подключиться / обновить список</button>
+<label>Поиск<input id="search" type="search" placeholder="Название диалога · Ctrl+K"></label>
+<p id="status" role="status" aria-live="polite">Запросов пока не было.</p>
+<button id="plugins" type="button">Показать установленные плагины</button>
+<p id="plugin-summary"></p>
+<nav id="conversations" aria-label="Диалоги"></nav>
+<button id="more" type="button" hidden>Загрузить ещё 20 диалогов</button>
+</aside><main class="main">
+<header><h2 id="title">Выберите диалог</h2><span id="count"></span></header>
+<button id="older" type="button" hidden>Загрузить старые сообщения</button>
+<section id="messages" tabindex="0" aria-label="Сообщения"></section>
+<footer>Прототип · Только чтение · Отправка пока не поддерживается</footer>
+</main></div></body></html>
