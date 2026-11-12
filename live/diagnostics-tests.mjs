@@ -44,3 +44,16 @@ test("account discovery logs a count but never an account identifier",()=>{
  assert.equal(d.events.at(-1).count,1);
  assert.doesNotMatch(JSON.stringify(d.snapshot()),/11111111-2222-4333-8444-555555555555/);
 });
+
+test("comparison diagnostics include only counts, HTTP status and response types",()=>{
+ const d=new Diagnostics({now:()=>1700000000000});
+ d.add("probe_result",{operation:"site",status:200,responseType:"json",
+  count:20,total:44,conversationId:"PRIVATE",title:"Sensitive",body:"SECRET"});
+ d.add("probe_result",{operation:"extension",status:200,responseType:"json",
+  count:0,total:0});
+ const json=JSON.stringify(d.snapshot());
+ assert.match(json,/"operation":"site"/);
+ assert.match(json,/"operation":"extension"/);
+ assert.match(json,/"count":20/);
+ assert.doesNotMatch(json,/PRIVATE|Sensitive|SECRET/);
+});
