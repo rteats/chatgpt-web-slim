@@ -4,11 +4,11 @@
  * Kept in memory only; exported on explicit user interaction.
  */
 const EVENT_NAMES=new Set([
-  "session_started","action_started","action_succeeded","action_failed",
+  "session_started","account_resolved","action_started","action_succeeded","action_failed",
   "request_started","request_succeeded","request_failed","response_empty","cache_hit",
   "request_joined","runtime_error","unhandled_rejection"
 ]);
-const OPERATIONS=new Set(["conversations","conversation","plugins","older","session","unknown"]);
+const OPERATIONS=new Set(["conversations","conversation","plugins","older","session","accounts","unknown"]);
 const ERROR_CLASSES=new Set(["network","authentication","rate_limited","server","format","validation","unknown"]);
 function finiteInt(value,max=86400000){
   return typeof value==="number"&&Number.isFinite(value)?
@@ -39,7 +39,7 @@ export class Diagnostics {
     return {
       schema:"web-slim-diag-v1",
       browser:navigator.userAgentData?.brands?.map(x=>x.brand).filter(x=>/Chrom|Edge|Brave/i.test(x)).slice(0,3)??[],
-      appVersion:"0.2.2",
+      appVersion:"0.2.3",
       exportedAt:new Date(this.now()).toISOString(),
       privacy:"No URLs, message content, identifiers, headers, tokens, cookies or stacks",
       events:this.events.slice()
