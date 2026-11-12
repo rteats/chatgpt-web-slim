@@ -60,6 +60,8 @@ export class Diagnostics {
   }
 }
 export function errorClass(error){
+  const kind=error?.kind;
+  if(ERROR_CLASSES.has(kind))return kind;
   const code=Number(error?.status)||0;
   if(code===401||code===403)return "authentication";
   if(code===429||code===503)return "rate_limited";
