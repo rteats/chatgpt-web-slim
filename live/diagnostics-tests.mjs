@@ -22,3 +22,15 @@ test("bounded ring buffer and no arbitrary event labels",()=>{
  assert.equal(d.events.length,4);
  assert.equal(d.events.at(-1).count,49);
 });
+
+test("diagnostics record only MIME group and session outcome, not actual account details",()=>{
+ const d=new Diagnostics({now:()=>1700000000000});
+ d.add("request_failed",{operation:"plugins",status:200,responseType:"html",
+  email:"private@example.com",responseBody:"secret",url:"https://chatgpt.com/private"});
+ d.add("response_empty",{operation:"conversations",count:0,total:0});
+ d.add("action_succeeded",{operation:"session",count:1,email:"private@example.com"});
+ const json=JSON.stringify(d.snapshot());
+ assert.match(json,/"responseType":"html"/);
+ assert.match(json,/"response_empty"/);
+ assert.doesNotMatch(json,/private@example.com|responseBody|https:\/\/chatgpt.com/);
+});
