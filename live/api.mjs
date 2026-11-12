@@ -1,7 +1,8 @@
 /** User-triggered, read-only ChatGPT web requests. No credential capture or retries. */
 const BASE="https://chatgpt.com",MIN_GAP_MS=3000,WINDOW_MS=600000,LIMIT=20;
+function contentTypeGroup(contentType){const t=(contentType||"").toLowerCase();return t.includes("json")?"json":t.includes("html")?"html":t.startsWith("text/")?"text":"other";}
 export class ApiError extends Error{
- constructor(message,status=0){super(message);this.name="ApiError";this.status=status;}
+ constructor(message,status=0,kind="unknown"){super(message);this.name="ApiError";this.status=status;this.kind=kind;}
 }
 function validID(value){return typeof value==="string"&&/^[a-zA-Z0-9_-]{8,128}$/.test(value);}
 function retryDelay(header,now){
@@ -37,6 +38,7 @@ export class ChatReader{
   return pending;
  }
  #operation(path){
+  if(path==="/backend-api/me")return "session";
   if(path.startsWith("/backend-api/ps/plugins/"))return "plugins";
   if(path.startsWith("/backend-api/conversations/"))return "conversation";
   if(path.startsWith("/backend-api/conversations?"))return "conversations";
@@ -48,10 +50,10 @@ export class ChatReader{
   try{return await this.#sendActual(path,ttlMs,operation,started);}
   catch(error){
    const status=Number(error?.status)||0;
-   const errorClass=[401,403].includes(status)?"authentication":
+   const errorClass=error?.kind&&error.kind!=="unknown"?error.kind:[401,403].includes(status)?"authentication":
     [429,503].includes(status)?"rate_limited":status>=500?"server":
     status>=400?"validation":error?.message?.startsWith("Ошибка сети")?"network":"format";
-   this.#diag("request_failed",{operation,status,errorClass,durationMs:this.now()-started});
+   this.#diag("request_failed",{operation,status,errorClass,responseType:error?.responseType,durationMs:this.now()-started});
    throw error;
   }
  }
@@ -69,20 +71,24 @@ export class ChatReader{
    response=await this.fetchImpl(BASE+path,{method:"GET",credentials:"include",mode:"cors",
     redirect:"error",headers:{Accept:"application/json"},cache:"no-store"});
   }catch{
-   throw new ApiError("Ошибка сети, CORS или сессии. Проверьте вход в ChatGPT.");
+   throw new ApiError("Ошибка сети, CORS или сессии. Проверьте вход в ChatGPT.",0,"network");
   }
-  if([401,403].includes(response.status))throw new ApiError("Авторизация отклонена ("+response.status+"). Не вставляйте cookies вручную.",response.status);
+  if([401,403].includes(response.status))throw new ApiError("Авторизация отклонена ("+response.status+"). Не вставляйте cookies вручную.",response.status,"authentication");
   if([429,503].includes(response.status)){
    this.blockedUntil=this.now()+retryDelay(response.headers.get("retry-after"),this.now());
-   throw new ApiError("Сервер ответил "+response.status+". Автоповторов нет.",response.status);
+   throw new ApiError("Сервер ответил "+response.status+". Автоповторов нет.",response.status,"rate_limited");
   }
   if(!response.ok)throw new ApiError("HTTP "+response.status);
-  if(!(response.headers.get("content-type")||"").toLowerCase().includes("json"))
-   throw new ApiError("Получен ответ не в формате JSON.");
+  const responseType=contentTypeGroup(response.headers.get("content-type"));
+  if(responseType!=="json"){
+   const error=new ApiError("Сервер вернул "+responseType+" вместо JSON (HTTP "+response.status+"). Проверьте сессию или доступ к API.",response.status,"format");
+   error.responseType=responseType;
+   throw error;
+  }
   let payload;
-  try{payload=await response.json();}catch{throw new ApiError("Ошибка разбора JSON.");}
+  try{payload=await response.json();}catch{throw new ApiError("Ошибка разбора JSON.",response.status,"format");}
   if(ttlMs)this.cache.set(path,{payload,expiresAt:this.now()+ttlMs});
-  this.#diag("request_succeeded",{operation,status:response.status,durationMs:this.now()-started});
+  this.#diag("request_succeeded",{operation,status:response.status,responseType,durationMs:this.now()-started});
   return payload;
  }
  list(offset=0){
@@ -101,5 +107,6 @@ export class ChatReader{
   }
   return this.request("/backend-api/conversations/"+encodeURIComponent(id)+"?"+q.toString(),60000);
  }
- plugins(){return this.request("/backend-api/ps/plugins/installed",60000);}
+ session(){return this.request("/backend-api/me",15000);}
+ plugins(){return this.request("/backend-api/ps/plugins/installed?limit=1000&includeExtensions=true",60000);}
 }
