@@ -40,3 +40,11 @@ For JS syntax checks:
     node --check live/model.mjs
     node --check live/stream.mjs
     node --check live/send-model.mjs
+
+## Bug reports / safe diagnostic logging
+
+The Live Reader now has a **Скачать диагностический лог (.json)** button. Open the extension page, reproduce the issue, then download `web-slim-diagnostics.json` and send it directly to the developer in a private chat. It records only allowlisted operation types, HTTP status codes, durations and counts; no URLs, conversation IDs, message content, headers, cookies, request bodies or stack traces. It is kept in memory and is downloaded only on user request.
+
+For any error not explained by the JSON diagnostics, also capture DevTools Console errors from the **Live Reader tab** (F12 → Console → Preserve log → reproduce → Save as). If a request fails, capture Network → Preserve log → **Export HAR (sanitized)** and inspect for identifiers/tokens before sharing. Do not publish any raw HAR, screenshot of private chats, or full trace publicly.
+
+Tell the developer what action failed (connecting, opening a chat, older messages, plugin list), how often it happens, whether a clean-browser profile reproduces it, and whether the site itself works.

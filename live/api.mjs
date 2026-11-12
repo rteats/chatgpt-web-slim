@@ -13,23 +13,49 @@ function retryDelay(header,now){
 }
 export class ChatReader{
  constructor({fetchImpl=(...args)=>fetch(...args),now=()=>Date.now(),
-  sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms))}={}){
+  sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms)),onDiagnostic=()=>{}}={}){
   this.fetchImpl=fetchImpl;this.now=now;this.sleep=sleep;this.timestamps=[];
   this.queue=Promise.resolve();this.cache=new Map();this.inflight=new Map();
   this.lastRequestAt=-Infinity;this.blockedUntil=0;
+  this.onDiagnostic=onDiagnostic;
  }
  clearCache(){this.cache.clear();}
  request(path,ttlMs=0){
   const cached=this.cache.get(path);
-  if(cached&&cached.expiresAt>this.now())return Promise.resolve(cached.payload);
-  if(this.inflight.has(path))return this.inflight.get(path);
+  if(cached&&cached.expiresAt>this.now()){
+   this.#diag("cache_hit",{operation:this.#operation(path)});
+   return Promise.resolve(cached.payload);
+  }
+  if(this.inflight.has(path)){
+   this.#diag("request_joined",{operation:this.#operation(path)});
+   return this.inflight.get(path);
+  }
   const pending=this.queue.then(()=>this.#send(path,ttlMs),()=>this.#send(path,ttlMs));
   this.queue=pending.catch(()=>{});
   this.inflight.set(path,pending);
   pending.finally(()=>this.inflight.delete(path)).catch(()=>{});
   return pending;
  }
+ #operation(path){
+  if(path.startsWith("/backend-api/ps/plugins/"))return "plugins";
+  if(path.startsWith("/backend-api/conversations/"))return "conversation";
+  if(path.startsWith("/backend-api/conversations?"))return "conversations";
+  return "unknown";
+ }
+ #diag(event,details){try{this.onDiagnostic(event,details);}catch{ /* Diagnostics must never break network flow. */ }}
  async #send(path,ttlMs){
+  const operation=this.#operation(path),started=this.now();
+  try{return await this.#sendActual(path,ttlMs,operation,started);}
+  catch(error){
+   const status=Number(error?.status)||0;
+   const errorClass=[401,403].includes(status)?"authentication":
+    [429,503].includes(status)?"rate_limited":status>=500?"server":
+    status>=400?"validation":error?.message?.startsWith("Ошибка сети")?"network":"format";
+   this.#diag("request_failed",{operation,status,errorClass,durationMs:this.now()-started});
+   throw error;
+  }
+ }
+ async #sendActual(path,ttlMs,operation,started){
   if(this.now()<this.blockedUntil)throw new ApiError("Сервер ограничил запросы",429);
   const gap=Math.max(0,this.lastRequestAt+MIN_GAP_MS-this.now());
   if(gap)await this.sleep(gap);
@@ -37,6 +63,7 @@ export class ChatReader{
   this.timestamps=this.timestamps.filter(x=>t-x<WINDOW_MS);
   if(this.timestamps.length>=LIMIT)throw new ApiError("Локальный лимит: 20 запросов за 10 минут. Запрос не отправлен.",429);
   this.timestamps.push(t);this.lastRequestAt=t;
+  this.#diag("request_started",{operation});
   let response;
   try{
    response=await this.fetchImpl(BASE+path,{method:"GET",credentials:"include",mode:"cors",
@@ -55,6 +82,7 @@ export class ChatReader{
   let payload;
   try{payload=await response.json();}catch{throw new ApiError("Ошибка разбора JSON.");}
   if(ttlMs)this.cache.set(path,{payload,expiresAt:this.now()+ttlMs});
+  this.#diag("request_succeeded",{operation,status:response.status,durationMs:this.now()-started});
   return payload;
  }
  list(offset=0){

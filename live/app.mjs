@@ -1,11 +1,14 @@
 import {ChatReader} from "./api.mjs";
 import {listItems,visibleMessages,pageState} from "./model.mjs";
-const api=new ChatReader(),$=s=>document.querySelector(s);
+import {Diagnostics,errorClass} from "./diagnostics.mjs";
+const diagnostics=new Diagnostics();
+const api=new ChatReader({onDiagnostic:(event,details)=>diagnostics.add(event,details)}),$=s=>document.querySelector(s);
 const connect=$("#connect"),more=$("#more"),older=$("#older"),plugins=$("#plugins");
 const search=$("#search"),list=$("#conversations"),messages=$("#messages");
 const status=$("#status"),title=$("#title"),count=$("#count"),pluginSummary=$("#plugin-summary");
 let items=[],offset=0,total=0,selected=null,rows=[],page=null,busy=false;
 function report(text,bad=false){status.textContent=text;status.classList.toggle("error",bad);}
+function actionFailed(operation,error){diagnostics.add("action_failed",{operation,errorClass:errorClass(error),status:error?.status});report(error.message,true);}
 function setBusy(value){
  busy=value;
  for(const b of [connect,more,older,plugins,...list.querySelectorAll("button")])b.disabled=value;
@@ -48,7 +51,7 @@ function renderMessages(prepend,fresh){
 }
 async function loadList(reset){
  if(busy)return;
- setBusy(true);report("Получаем список чатов…");
+ setBusy(true);diagnostics.add("action_started",{operation:"conversations"});report("Получаем список чатов…");
  if(reset){api.clearCache();offset=0;}
  try{
   const data=await api.list(offset);
@@ -60,25 +63,27 @@ async function loadList(reset){
   const known=new Set(items.map(x=>x.id));
   for(const item of batch)if(!known.has(item.id)){items.push(item);known.add(item.id);}
   offset+=20;total=Number(data.total)||items.length;
+  diagnostics.add("action_succeeded",{operation:"conversations",count:items.length,total});
   report("Загружено "+items.length+" из "+total+" диалогов");
- }catch(error){report(error.message,true);}
+ }catch(error){actionFailed("conversations",error);}
  finally{setBusy(false);renderSidebar();}
 }
 async function openConversation(item){
  if(busy)return;
- setBusy(true);report("Читаем сообщения…");
+ setBusy(true);diagnostics.add("action_started",{operation:"conversation"});report("Читаем сообщения…");
  try{
   const data=await api.conversation(item.id);
   rows=visibleMessages(data);page=pageState(data);selected=item.id;
   title.textContent=typeof data.title==="string"?data.title:item.title;
   renderMessages(false,rows);
+  diagnostics.add("action_succeeded",{operation:"conversation",count:rows.length});
   report("Диалог открыт · служебные сообщения скрыты");
- }catch(error){report(error.message,true);}
+ }catch(error){actionFailed("conversation",error);}
  finally{setBusy(false);renderSidebar();}
 }
 async function loadOlder(){
  if(busy||!selected||!page?.hasOlder||!page.before)return;
- setBusy(true);const cursor=page.before;report("Загружаем старые сообщения…");
+ setBusy(true);diagnostics.add("action_started",{operation:"older"});const cursor=page.before;report("Загружаем старые сообщения…");
  try{
   const data=await api.conversation(selected,cursor);
   const known=new Set(rows.map(x=>x.id));
@@ -87,19 +92,21 @@ async function loadOlder(){
   const next=pageState(data);
   page=next.before===cursor?{hasOlder:false,before:null}:next;
   renderMessages(true,earlier);
+  diagnostics.add("action_succeeded",{operation:"older",count:earlier.length});
   report("Подгружено сообщений: "+earlier.length);
- }catch(error){report(error.message,true);}
+ }catch(error){actionFailed("older",error);}
  finally{setBusy(false);}
 }
 async function loadPlugins(){
  if(busy)return;
- setBusy(true);
+ setBusy(true);diagnostics.add("action_started",{operation:"plugins"});
  try{
   const data=await api.plugins();
   const names=Array.isArray(data.plugins)?data.plugins.map(x=>x?.name).filter(x=>typeof x==="string"):[];
   pluginSummary.textContent="Установлено: "+names.length+(names.length?" · "+names.slice(0,8).join(", "):"");
+  diagnostics.add("action_succeeded",{operation:"plugins",count:names.length});
   report("Получены метаданные плагинов, без вызова их инструментов.");
- }catch(error){report(error.message,true);}
+ }catch(error){actionFailed("plugins",error);}
  finally{setBusy(false);}
 }
 connect.addEventListener("click",()=>loadList(true));
@@ -112,3 +119,7 @@ document.addEventListener("keydown",e=>{
   e.preventDefault();search.focus();search.select();
  }
 });
+
+$("#export-logs").addEventListener("click",()=>diagnostics.download());
+window.addEventListener("error",()=>diagnostics.add("runtime_error",{operation:"unknown"}));
+window.addEventListener("unhandledrejection",()=>diagnostics.add("unhandled_rejection",{operation:"unknown"}));
