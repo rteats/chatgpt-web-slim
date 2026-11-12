@@ -19,6 +19,14 @@ function retryDelay(header,now){
  const t=Date.parse(header);
  return Number.isFinite(t)?Math.max(1000,Math.min(86400000,t-now)):60000;
 }
+export function conversationListPath(offset=0){
+ if(!Number.isSafeInteger(offset)||offset<0||offset>10000)
+  throw new ApiError("Неверный offset",0,"validation");
+ const q=new URLSearchParams({exclude_conversation_origin:"tpp",expand:"false",
+  hide_snorlax:"false",is_archived:"false",is_starred:"false",limit:"20",
+  order:"updated",offset:String(offset)});
+ return "/backend-api/conversations?"+q.toString();
+}
 export class ChatReader{
  constructor({fetchImpl=(...args)=>fetch(...args),now=()=>Date.now(),
   sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms)),onDiagnostic=()=>{},
@@ -122,12 +130,9 @@ export class ChatReader{
   try{return await task;}finally{if(this.accountPromise===task)this.accountPromise=null;}
  }
  async list(offset=0){
-  if(!Number.isSafeInteger(offset)||offset<0||offset>10000)throw new ApiError("Неверный offset");
+  const path=conversationListPath(offset);
   await this.ensureAccount();
-  const q=new URLSearchParams({exclude_conversation_origin:"tpp",expand:"false",
-   hide_snorlax:"false",is_archived:"false",is_starred:"false",limit:"20",
-   order:"updated",offset:String(offset)});
-  return this.request("/backend-api/conversations?"+q.toString(),20000);
+  return this.request(path,20000);
  }
  async conversation(id,before=null){
   if(!validID(id))throw new ApiError("Неверный ID диалога");
