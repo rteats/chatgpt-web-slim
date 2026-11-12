@@ -91,3 +91,27 @@ v0.2.4 avoids that circular dependency: the extension passively observes only th
 ### Tests
 
     node --test live/api-tests.mjs live/protocol-tests.mjs live/diagnostics-tests.mjs live/account-capture-tests.mjs
+
+
+## v0.2.5 — differential network diagnostics
+
+**Reason:** In v0.2.4 the extension resolves an account and GET /backend-api/me returns HTTP 200, yet the conversation-list request returns 200 with 0 items (three attempts), while installed plugins return HTTP 451. This does not prove why the result differs from the successful first-party HAR, which showed 14–20 conversations.
+
+**New test:** Click **Диагностика: сравнить сайт и расширение** in Live Reader. The extension performs one read-only GET from an existing signed-in chatgpt.com tab using an isolated content-script world, and one from its own extension page. Both use the same account selector and exactly the same list URL parameters. The UI and diagnostic download show only HTTP status, MIME category, item count and total. No raw response, chat titles, conversation IDs, content, cookies or auth headers are returned by the probe. This feature does not automatically poll and does not attempt to bypass access controls.
+
+### Interpret results
+
+- **Site 200 with nonzero items / extension 200 with zero items**: the distinction is extension-origin request context (credentials, cookies, request metadata or server policy) rather than a missing account selector alone.
+- **Both 200 with zero items**: check whether the same browser account and query parameters are being compared; the server may legitimately respond with empty data for that context.
+- **Site fails or is not available**: no root cause is established. The user should inspect the official site's normal behavior and not repeatedly probe a denial.
+- **Plugins HTTP 451**: a server refusal. This UI disables plugin inventory retry for the remainder of the tab session rather than attempting to circumvent restrictions. The standard meaning of 451 is 'Unavailable For Legal Reasons', but the exact reason here is unknown without the server's explanation.
+
+### Test steps
+
+1. Download the new branch, update **live/** as an unpacked extension and Reload it on chrome://extensions. v0.2.5 adds a **scripting** permission in addition to the earlier **webRequest** and **storage** permissions.
+2. Keep a normal, signed-in chatgpt.com tab open with a loaded conversation (same browser profile).
+3. Reopen Live Reader; click **Диагностика: сравнить сайт и расширение** exactly once.
+4. Compare the aggregate output shown in the UI and download web-slim-diagnostics.json.
+5. Send only the diagnostic JSON in private chat, without raw HAR, chat IDs or response contents.
+
+This is a controlled diagnostic feature rather than a claim of full live functionality. The replacement frontend still does not send messages.
