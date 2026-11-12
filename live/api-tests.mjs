@@ -52,3 +52,31 @@ test("model hides tool and internal channels",()=>{
  assert.deepEqual(pageState({page_info:{has_previous_page:true,start_cursor:"k"}}),{hasOlder:true,before:"k"});
  assert.equal(listItems({items:[{id:"c",title:"Test"}]}).length,1);
 });
+
+
+test("plugin discovery uses actual HAR query parameters",async()=>{
+ const urls=[];
+ const api=new ChatReader({fetchImpl:async(url)=>{urls.push(url);return response({plugins:[]});}});
+ await api.plugins();
+ const u=new URL(urls[0]);
+ assert.equal(u.searchParams.get("limit"),"1000");
+ assert.equal(u.searchParams.get("includeExtensions"),"true");
+});
+test("explicit session probe only reads profile and never stores its content",async()=>{
+ const urls=[];
+ const api=new ChatReader({fetchImpl:async(url)=>{urls.push(url);return response({id:"test-profile",email:"private@example.com"});}});
+ const x=await api.session();
+ assert.equal(x.id,"test-profile");
+ assert.equal(new URL(urls[0]).pathname,"/backend-api/me");
+});
+test("200 non-JSON is classified as format error with response category",async()=>{
+ const reports=[];
+ const api=new ChatReader({
+  onDiagnostic:(event,detail)=>reports.push({event,...detail}),
+  fetchImpl:async()=>response(null,200,{"content-type":"text/html"})
+ });
+ await assert.rejects(api.plugins(),err=>err.kind==="format" && err.responseType==="html");
+ assert.equal(reports.at(-1).event,"request_failed");
+ assert.equal(reports.at(-1).responseType,"html");
+ assert.equal(reports.at(-1).status,200);
+});
