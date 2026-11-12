@@ -39,7 +39,7 @@ export class Diagnostics {
     return {
       schema:"web-slim-diag-v1",
       browser:navigator.userAgentData?.brands?.map(x=>x.brand).filter(x=>/Chrom|Edge|Brave/i.test(x)).slice(0,3)??[],
-      appVersion:"0.2.1",
+      appVersion:"0.2.2",
       exportedAt:new Date(this.now()).toISOString(),
       privacy:"No URLs, message content, identifiers, headers, tokens, cookies or stacks",
       events:this.events.slice()
