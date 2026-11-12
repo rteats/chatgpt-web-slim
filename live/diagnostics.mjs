@@ -5,10 +5,10 @@
  */
 const EVENT_NAMES=new Set([
   "session_started","action_started","action_succeeded","action_failed",
-  "request_started","request_succeeded","request_failed","cache_hit",
+  "request_started","request_succeeded","request_failed","response_empty","cache_hit",
   "request_joined","runtime_error","unhandled_rejection"
 ]);
-const OPERATIONS=new Set(["conversations","conversation","plugins","older","unknown"]);
+const OPERATIONS=new Set(["conversations","conversation","plugins","older","session","unknown"]);
 const ERROR_CLASSES=new Set(["network","authentication","rate_limited","server","format","validation","unknown"]);
 function finiteInt(value,max=86400000){
   return typeof value==="number"&&Number.isFinite(value)?
@@ -31,6 +31,7 @@ export class Diagnostics {
       if(n!==undefined)record[field]=n;
     }
     if(ERROR_CLASSES.has(details.errorClass))record.errorClass=details.errorClass;
+    if(["json","html","text","other"].includes(details.responseType))record.responseType=details.responseType;
     this.events.push(record);
     if(this.events.length>this.limit)this.events.splice(0,this.events.length-this.limit);
   }
