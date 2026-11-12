@@ -72,3 +72,22 @@ Web Slim now requests this session-scoped account list on demand, validates its 
 After upgrading an unpacked extension: refresh the extension in chrome://extensions and **close/reopen the Live Reader tab**. Press Connect, then try Plugins. If a query fails, export a fresh diagnostic report. Please do not paste any actual account IDs or tokens.
 
 To confirm root cause without exposing personal data, the diagnostics can now record account_resolved with the number of accessible workspaces, but never their identifiers.
+
+## Current version 0.2.4 — one-time browser account capture
+
+v0.2.3 incorrectly attempted to bootstrap workspace identity from GET /backend-api/wham/accounts/check, but the successful request in the original browser HAR **already carried ChatGPT-Account-ID**. Without it, the extension received HTTP 401 and none of its other requests ran.
+
+v0.2.4 avoids that circular dependency: the extension passively observes only the `ChatGPT-Account-ID` header on a first-party request made by the official ChatGPT site. It does not read or store cookies, Authorization, bodies, messages, or unrelated headers, and it never modifies requests. The observed account selector is saved only to `chrome.storage.session` (memory-only, cleared when the extension reloads or the browser restarts). The standalone Live Reader can then reuse that account selector for its own user-triggered GET requests.
+
+### One-time setup
+
+1. Install/update the unpacked **live/** extension from this branch, then click Reload on chrome://extensions.
+2. Open the **regular** https://chatgpt.com/ site in that same browser profile and open or switch a conversation. Wait for the chat list to load.
+3. Open the **Live Reader** from the extension toolbar. The account status must say it was detected. Otherwise reload the regular site once and try again.
+4. Press Connect. Then try a chat and plugins; download the diagnostic JSON if anything fails.
+
+**Privacy/permissions:** v0.2.4 requests Chrome `webRequest` and `storage` permissions to observe just one first-party routing header. Unlike the earlier version it does not make an accounts/check request. The browser may still reject third-party extension-origin requests, and functionality must be validated in a real browser. The approach depends on an undocumented API, not a supported ChatGPT integration. Never submit a workspace/account ID publicly.
+
+### Tests
+
+    node --test live/api-tests.mjs live/protocol-tests.mjs live/diagnostics-tests.mjs live/account-capture-tests.mjs
