@@ -61,3 +61,14 @@ If the list shows zero chats while the regular site has conversations:
 5. If the session matches but the list remains empty, open DevTools → Network on the extension page, click the GET /backend-api/conversations request and check its Response tab locally. Do **not** publish it: it contains conversation IDs and titles.
 
 A 200 response with an empty JSON list is not a CORS error. A 200 HTML response in place of JSON can indicate an authentication redirect, an interstitial or an unexpected backend response. The extension cannot infer the exact cause without a reproducible response shape. It deliberately does not try to evade access controls or replay session tokens.
+
+
+## Account routing fix (v0.2.3)
+
+The original browser HAR included **ChatGPT-Account-ID** on successful history, profile, and plugin requests; the lightweight extension did not send this header. A successful GET /backend-api/me does not verify which workspace is selected. The HAR also showed that the account header equals the default_account_id returned by GET /backend-api/wham/accounts/check.
+
+Web Slim now requests this session-scoped account list on demand, validates its default ID against the accessible membership list, and includes the account header on subsequent read-only requests. The account ID is held **in memory only** and is never included in exported diagnostics, source code, local storage, or URL parameters. Session refresh clears it. This may fix the 200 OK with zero conversations; it is a hypothesis pending real-browser validation.
+
+After upgrading an unpacked extension: refresh the extension in chrome://extensions and **close/reopen the Live Reader tab**. Press Connect, then try Plugins. If a query fails, export a fresh diagnostic report. Please do not paste any actual account IDs or tokens.
+
+To confirm root cause without exposing personal data, the diagnostics can now record account_resolved with the number of accessible workspaces, but never their identifiers.
