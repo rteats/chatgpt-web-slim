@@ -1,0 +1,8 @@
+*.har
+*.har.zip
+Trace-*.json.gz
+conversations.json
+conversations-*.json
+export-*.zip
+.env*
+__pycache__/

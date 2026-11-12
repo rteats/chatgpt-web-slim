@@ -1,0 +1,10 @@
+[
+  {"id":"demo-one","title":"Demo · Lightweight conversation","create_time":1794000000,"update_time":1794000100,"current_node":"a","mapping":{
+    "u":{"id":"u","parent":null,"message":{"id":"u","author":{"role":"user"},"content":{"parts":["What is this frontend?"]}}},
+    "a":{"id":"a","parent":"u","message":{"id":"a","author":{"role":"assistant"},"content":{"parts":["A local, read-only conversation viewer. No original ChatGPT JavaScript, no remote requests, and no subscription access."]}}}
+  }},
+  {"id":"demo-two","title":"Demo · Browser performance","create_time":1793990000,"update_time":1793991000,"current_node":"a","mapping":{
+    "u":{"id":"u","parent":null,"message":{"id":"u","author":{"role":"user"},"content":{"parts":["Does it require React?"]}}},
+    "a":{"id":"a","parent":"u","message":{"id":"a","author":{"role":"assistant"},"content":{"parts":["No React, no bundler, no runtime dependencies."]}}}
+  }}
+]

@@ -1,0 +1,13 @@
+name: Standalone client checks
+on: [push, pull_request]
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --test client/tests.mjs
+      - run: node --check client/app.mjs
+      - run: node --check client/worker.mjs

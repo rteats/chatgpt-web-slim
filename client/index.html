@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+ <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
+ <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; worker-src 'self'; style-src 'self'; connect-src 'none'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+ <title>Web Slim — Local Viewer</title><link rel="stylesheet" href="./styles.css"><script type="module" src="./app.mjs"></script>
+</head>
+<body>
+<div class="shell">
+ <aside class="sidebar">
+  <h1>ChatGPT Web Slim</h1><p class="sub">Independent local viewer · no backend</p>
+  <label class="file-button">Import conversations.json<input id="file" type="file" accept=".json,application/json"></label>
+  <input id="search" type="search" placeholder="Search chat titles · Ctrl+K" aria-label="Search chat titles">
+  <div id="status" role="status"></div>
+  <nav id="conversation-list" aria-label="Conversation history"></nav>
+ </aside>
+ <main class="main">
+  <header class="header"><h2 id="chat-title"></h2><span id="message-count"></span></header>
+  <div class="chat-column">
+   <button id="earlier" class="earlier" type="button" hidden>Load earlier messages</button>
+   <section id="messages" aria-label="Conversation messages" tabindex="0"></section>
+  </div>
+  <footer class="disclaimer">Read-only · Local parsing · No ChatGPT login or subscription access</footer>
+ </main>
+</div>
+</body></html>
