@@ -1,19 +1,22 @@
-import {ChatReader} from "./api.mjs";
+import {ChatReader,conversationListPath} from "./api.mjs";
+import {runSiteProbe} from "./site-probe.mjs";
 import {listItems,visibleMessages,pageState} from "./model.mjs";
 import {Diagnostics,errorClass} from "./diagnostics.mjs";
 const diagnostics=new Diagnostics();
 const api=new ChatReader({onDiagnostic:(event,details)=>diagnostics.add(event,details)}),$=s=>document.querySelector(s);
 const connect=$("#connect"),more=$("#more"),older=$("#older"),plugins=$("#plugins");
 const sessionButton=$("#check-session"),sessionInfo=$("#session-info");
+const compareButton=$("#compare"),compareResult=$("#compare-result");
 const originalButton=$("#open-original"),accountStatus=$("#account-status");
 const search=$("#search"),list=$("#conversations"),messages=$("#messages");
 const status=$("#status"),title=$("#title"),count=$("#count"),pluginSummary=$("#plugin-summary");
-let items=[],offset=0,total=0,selected=null,rows=[],page=null,busy=false;
+let items=[],offset=0,total=0,selected=null,rows=[],page=null,busy=false,pluginsBlocked=false;
 function report(text,bad=false){status.textContent=text;status.classList.toggle("error",bad);}
 function actionFailed(operation,error){diagnostics.add("action_failed",{operation,errorClass:errorClass(error),status:error?.status});report(error.message,true);}
 function setBusy(value){
  busy=value;
- for(const b of [connect,more,older,plugins,sessionButton,...list.querySelectorAll("button")])b.disabled=value;
+ for(const b of [connect,more,older,plugins,sessionButton,compareButton,...list.querySelectorAll("button")])
+  b.disabled=value||(b===plugins&&pluginsBlocked);
 }
 function makeMessage(row){
  const article=document.createElement("article");
@@ -111,8 +114,15 @@ async function loadPlugins(){
   pluginSummary.textContent="Установлено: "+names.length+(names.length?" · "+names.slice(0,8).join(", "):"");
   diagnostics.add("action_succeeded",{operation:"plugins",count:names.length});
   report("Получены метаданные плагинов, без вызова их инструментов.");
- }catch(error){actionFailed("plugins",error);}
+  }catch(error){
+  if(error?.status===451){
+   pluginsBlocked=true;
+   pluginSummary.textContent="HTTP 451: сервер отказал в доступе к каталогу плагинов. Повторные запросы отключены.";
+  }
+  actionFailed("plugins",error);
+ }
  finally{setBusy(false);}
+
 }
 function maskedEmail(email){
  if(typeof email!=="string"||!email.includes("@"))return "адрес недоступен";
@@ -138,6 +148,60 @@ async function checkSession(){
  }finally{setBusy(false);}
 }
 sessionButton.addEventListener("click",checkSession);
+function formatProbeResult(result){
+ if(result?.kind)return "ошибка "+result.kind;
+ return "HTTP "+String(result?.status??"?")+
+  ", "+String(result?.count??"?")+" элементов, total="+String(result?.total??"?")+
+  " ("+String(result?.responseType??"unknown")+")";
+}
+async function compareOrigins(){
+ if(busy)return;
+ setBusy(true);
+ compareResult.textContent="Сравнение запущено: один GET из расширения и один из обычной вкладки…";
+ try{
+  const capture=await chrome.runtime.sendMessage({type:"WEB_SLIM_GET_ACCOUNT"});
+  const accountId=capture?.accountId;
+  if(!accountId)throw new Error("Нет привязанного аккаунта. Сначала откройте обычный ChatGPT.");
+  const tabs=await chrome.tabs.query({url:"https://chatgpt.com/*"});
+  const official=tabs.find(t=>t.active&&t.id)||tabs.find(t=>t.id);
+  if(!official)throw new Error("Откройте обычный ChatGPT в этом профиле браузера.");
+  // Deliberate diagnostic action only, not a background poll or an auth bypass.
+  const path=conversationListPath(0);
+  const injected=await chrome.scripting.executeScript({
+   target:{tabId:official.id},world:"ISOLATED",
+   func:runSiteProbe,args:[accountId,path]
+  });
+  const site=injected?.[0]?.result??{kind:"unavailable"};
+  diagnostics.add(site?.kind?"probe_failed":"probe_result",{
+   operation:"site",status:site.status,responseType:site.responseType,
+   count:site.count,total:site.total,errorClass:site.kind==="network"?"network":"unknown"
+  });
+  api.clearCache();
+  let extension;
+  try{
+   const data=await api.list(0);
+   extension={
+    status:200,responseType:"json",
+    count:Array.isArray(data?.items)?data.items.length:undefined,
+    total:Number.isSafeInteger(data?.total)?data.total:undefined
+   };
+  }catch(error){
+   extension={status:error?.status||undefined,kind:error?.kind??"unknown"};
+  }
+  diagnostics.add(extension.kind?"probe_failed":"probe_result",{
+   operation:"extension",status:extension.status,responseType:extension.responseType,
+   count:extension.count,total:extension.total,errorClass:extension.kind
+  });
+  compareResult.textContent="Обычный сайт: "+formatProbeResult(site)+
+   " | Расширение: "+formatProbeResult(extension);
+  report("Сравнение завершено. Скачайте диагностический JSON — в нём только статусы и счётчики.");
+ }catch(error){
+  diagnostics.add("probe_failed",{operation:"site",errorClass:"unknown"});
+  compareResult.textContent="Сравнение не удалось: "+String(error?.message??"Ошибка");
+  report("Проверка недоступна. Проверьте открытую вкладку ChatGPT.",true);
+ }finally{setBusy(false);}
+}
+compareButton.addEventListener("click",compareOrigins);
 connect.addEventListener("click",()=>loadList(true));
 more.addEventListener("click",()=>loadList(false));
 older.addEventListener("click",loadOlder);
