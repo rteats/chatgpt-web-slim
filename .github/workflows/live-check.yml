@@ -8,9 +8,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: node --test live/api-tests.mjs live/protocol-tests.mjs
+      - run: node --test live/api-tests.mjs live/protocol-tests.mjs live/diagnostics-tests.mjs
       - run: node --check live/app.mjs
       - run: node --check live/api.mjs
       - run: node --check live/model.mjs
       - run: node --check live/stream.mjs
       - run: node --check live/send-model.mjs
+      - run: node --check live/diagnostics.mjs
