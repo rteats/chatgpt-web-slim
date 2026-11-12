@@ -1,5 +1,12 @@
 /** User-triggered, read-only ChatGPT web requests. No credential capture or retries. */
 const BASE="https://chatgpt.com",MIN_GAP_MS=3000,WINDOW_MS=600000,LIMIT=20;
+const validAccountId=id=>typeof id==="string"&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(id);
+async function currentBrowserAccount(){
+ try{
+  const data=await chrome.runtime.sendMessage({type:"WEB_SLIM_GET_ACCOUNT"});
+  return data?.accountId??null;
+ }catch{return null;}
+}
 function contentTypeGroup(contentType){const t=(contentType||"").toLowerCase();return t.includes("json")?"json":t.includes("html")?"html":t.startsWith("text/")?"text":"other";}
 export class ApiError extends Error{
  constructor(message,status=0,kind="unknown"){super(message);this.name="ApiError";this.status=status;this.kind=kind;}
@@ -14,11 +21,13 @@ function retryDelay(header,now){
 }
 export class ChatReader{
  constructor({fetchImpl=(...args)=>fetch(...args),now=()=>Date.now(),
-  sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms)),onDiagnostic=()=>{}}={}){
+  sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms)),onDiagnostic=()=>{},
+  accountProvider=currentBrowserAccount}={}){
   this.fetchImpl=fetchImpl;this.now=now;this.sleep=sleep;this.timestamps=[];
   this.queue=Promise.resolve();this.cache=new Map();this.inflight=new Map();
   this.lastRequestAt=-Infinity;this.blockedUntil=0;
   this.onDiagnostic=onDiagnostic;
+  this.accountProvider=accountProvider;
   this.accountId=null;this.accountPromise=null;
  }
  clearCache(){this.cache.clear();this.accountId=null;this.accountPromise=null;}
@@ -39,7 +48,6 @@ export class ChatReader{
   return pending;
  }
  #operation(path){
-  if(path==="/backend-api/wham/accounts/check")return "accounts";
   if(path==="/backend-api/me")return "session";
   if(path.startsWith("/backend-api/ps/plugins/"))return "plugins";
   if(path.startsWith("/backend-api/conversations/"))return "conversation";
@@ -101,16 +109,13 @@ export class ChatReader{
  async ensureAccount(){
   if(this.accountId)return this.accountId;
   if(this.accountPromise)return this.accountPromise;
-  const task=this.request("/backend-api/wham/accounts/check",15000).then(data=>{
-   const id=data?.default_account_id;
-   const members=Array.isArray(data?.accounts)?data.accounts:[];
-   const match=members.find(item=>item?.id===id);
-   if(typeof id!=="string"||!/^[-0-9a-f]{36}$/i.test(id)||!match||match.can_access_with_session!==true){
-    throw new ApiError("Не удалось определить активный аккаунт по ответу accounts/check.",0,"format");
-   }
+  const task=Promise.resolve().then(()=>this.accountProvider()).then(id=>{
+   if(!validAccountId(id))throw new ApiError(
+    "ID аккаунта пока не получен. Откройте обычный ChatGPT в этом браузере, дождитесь загрузки списка чатов, затем вернитесь и повторите подключение.",
+    0,"authentication");
    this.accountId=id;
-   // Only an allowlisted boolean is reported; never log the account ID.
-   this.#diag("account_resolved",{operation:"accounts",count:members.length});
+   // Only signal presence; never serialize actual account IDs into diagnostics.
+   this.#diag("account_resolved",{operation:"accounts",count:1});
    return id;
   });
   this.accountPromise=task;
@@ -134,6 +139,6 @@ export class ChatReader{
   }
   return this.request("/backend-api/conversations/"+encodeURIComponent(id)+"?"+q.toString(),60000);
  }
- async session(){await this.ensureAccount();return this.request("/backend-api/me",15000);}
+ async session(){return this.request("/backend-api/me",15000);}
  async plugins(){await this.ensureAccount();return this.request("/backend-api/ps/plugins/installed?limit=1000&includeExtensions=true",60000);}
 }
