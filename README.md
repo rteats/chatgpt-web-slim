@@ -9,11 +9,11 @@ This branch contains a **lightweight, standalone, read-only viewer of official C
 ### Run (Windows, Python 3)
 
 1. Download this branch as a ZIP; extract it.
-2. In PowerShell, from the extracted root directory, run:
+2. Double-click **start.cmd** to start a local-only server and open the viewer automatically (requires Python 3). Or run manually in PowerShell:
 
-    py -m http.server 8765 --directory client
+    py -m http.server 8765 --directory client --bind 127.0.0.1
 
-3. Open http://localhost:8765/
+3. Open http://127.0.0.1:8765/
 4. Import **client/demo.json** to test the UI, or request and unzip an official ChatGPT data export through **Settings → Data controls → Export data**, then select its **conversations.json**.
 5. Stop the local server with Ctrl+C.
 
