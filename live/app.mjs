@@ -4,6 +4,7 @@ import {Diagnostics,errorClass} from "./diagnostics.mjs";
 const diagnostics=new Diagnostics();
 const api=new ChatReader({onDiagnostic:(event,details)=>diagnostics.add(event,details)}),$=s=>document.querySelector(s);
 const connect=$("#connect"),more=$("#more"),older=$("#older"),plugins=$("#plugins");
+const sessionButton=$("#check-session"),sessionInfo=$("#session-info");
 const search=$("#search"),list=$("#conversations"),messages=$("#messages");
 const status=$("#status"),title=$("#title"),count=$("#count"),pluginSummary=$("#plugin-summary");
 let items=[],offset=0,total=0,selected=null,rows=[],page=null,busy=false;
@@ -11,7 +12,7 @@ function report(text,bad=false){status.textContent=text;status.classList.toggle(
 function actionFailed(operation,error){diagnostics.add("action_failed",{operation,errorClass:errorClass(error),status:error?.status});report(error.message,true);}
 function setBusy(value){
  busy=value;
- for(const b of [connect,more,older,plugins,...list.querySelectorAll("button")])b.disabled=value;
+ for(const b of [connect,more,older,plugins,sessionButton,...list.querySelectorAll("button")])b.disabled=value;
 }
 function makeMessage(row){
  const article=document.createElement("article");
@@ -64,7 +65,10 @@ async function loadList(reset){
   for(const item of batch)if(!known.has(item.id)){items.push(item);known.add(item.id);}
   offset+=20;total=Number(data.total)||items.length;
   diagnostics.add("action_succeeded",{operation:"conversations",count:items.length,total});
-  report("Загружено "+items.length+" из "+total+" диалогов");
+  if(items.length===0){
+   diagnostics.add("response_empty",{operation:"conversations",count:0,total});
+   report("Ответ HTTP 200, но список пуст. Нажмите «Проверить текущую сессию» и сравните аккаунт с обычным ChatGPT.",true);
+  }else report("Загружено "+items.length+" из "+total+" диалогов");
  }catch(error){actionFailed("conversations",error);}
  finally{setBusy(false);renderSidebar();}
 }
@@ -109,6 +113,30 @@ async function loadPlugins(){
  }catch(error){actionFailed("plugins",error);}
  finally{setBusy(false);}
 }
+function maskedEmail(email){
+ if(typeof email!=="string"||!email.includes("@"))return "адрес недоступен";
+ const [name,domain]=email.split("@");
+ return (name.slice(0,Math.min(2,name.length))+"***@"+domain);
+}
+async function checkSession(){
+ if(busy)return;
+ setBusy(true);diagnostics.add("action_started",{operation:"session"});
+ report("Проверяем сессию…");
+ try{
+  const me=await api.session();
+  const valid=typeof me?.id==="string"&&me.id.length>0;
+  if(!valid)throw new Error("Ответ профиля не содержит ожидаемого ID.");
+  // The email is shown locally only; it never enters diagnostics.
+  sessionInfo.textContent="Профиль доступен: "+maskedEmail(me.email)+". Сравните с аккаунтом на chatgpt.com.";
+  diagnostics.add("action_succeeded",{operation:"session",count:1});
+  report("Проверка профиля прошла. Это ещё не гарантирует доступ к истории.");
+ }catch(error){
+  diagnostics.add("action_failed",{operation:"session",errorClass:errorClass(error),status:error?.status});
+  sessionInfo.textContent="Не удалось проверить профиль.";
+  report(error.message,true);
+ }finally{setBusy(false);}
+}
+sessionButton.addEventListener("click",checkSession);
 connect.addEventListener("click",()=>loadList(true));
 more.addEventListener("click",()=>loadList(false));
 older.addEventListener("click",loadOlder);
