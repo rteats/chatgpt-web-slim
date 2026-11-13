@@ -78,7 +78,7 @@ test("monitor never activates without explicit start and saves only sanitized re
  const storage={},callbacks={};
  const on=(name)=>({addListener(fn){callbacks[name]=fn;}});
  const chrome={
-  runtime:{id:"extension-id",getURL:()=>ORIGIN+"/",onMessage:on("onMessage")},
+  runtime:{id:"extension-id",getURL:(path="")=>ORIGIN+"/"+path,onMessage:on("onMessage")},
   webRequest:{
    onBeforeSendHeaders:on("onBeforeSendHeaders"),onSendHeaders:on("onSendHeaders"),
    onCompleted:on("onCompleted"),onErrorOccurred:on("onErrorOccurred")
