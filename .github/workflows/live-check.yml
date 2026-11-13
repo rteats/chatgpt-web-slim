@@ -8,7 +8,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: node --test live/api-tests.mjs live/protocol-tests.mjs live/diagnostics-tests.mjs live/account-capture-tests.mjs live/site-probe-tests.mjs
+      - run: node --test live/api-tests.mjs live/protocol-tests.mjs live/diagnostics-tests.mjs live/account-capture-tests.mjs live/site-probe-tests.mjs live/net-audit-tests.mjs
       - run: node --check live/app.mjs
       - run: node --check live/api.mjs
       - run: node --check live/model.mjs
@@ -18,3 +18,5 @@ jobs:
       - run: node --check live/background.js
       - run: node --check live/account-capture.mjs
       - run: node --check live/site-probe.mjs
+      - run: node --check live/net-panel.mjs
+      - run: node --check live/net-audit.mjs
