@@ -1,4 +1,4 @@
-# ChatGPT Web Slim — Live Reader v0.2.6
+# ChatGPT Web Slim — Live Reader v0.2.7
 
 Experimental independent Chromium-extension frontend for browsing ChatGPT history without loading the official website's JavaScript. The private backend is undocumented; compatibility and authorization are **not guaranteed**. Not affiliated with OpenAI.
 
@@ -57,3 +57,23 @@ Do **not** commit actual HARs, conversation exports, traces, cookies, authentica
 Chrome reference:
 - https://developer.chrome.com/docs/extensions/reference/api/webRequest
 - https://developer.chrome.com/docs/extensions/reference/api/storage
+
+## v0.2.7 — avoid inconclusive reports
+
+The first v0.2.6 report contained **three official-site requests** (two conversation details, one installed-plugin inventory) and **zero extension observations**. There was no official **conversations.list** call either. That is **not a pairwise comparison**, and the v0.2.6 presentation incorrectly made unpaired headers look like differences.
+
+In v0.2.7, the analyzer:
+
+- Labels unpaired routes as **incomparable**; does not manufacture missing-header differences.
+- Independently instruments the Web Slim reader's list-request start, success and failure using an allowlisted message that contains **only operation, phase and HTTP status**. If Chrome does not expose extension-origin requests through webRequest, the report still records that the client attempted a GET.
+- Shows a warning when there was no ordinary-site conversation-list request, no Web Slim attempt or no webRequest observation of Web Slim's request.
+- Continues to collect header names passively, **never** authorization values, cookies, message content or IDs.
+
+### Exact next experiment
+
+1. Start monitoring the correct official ChatGPT tab.
+2. **Reload that official tab** to cause a real, fresh conversation-list GET (opening already-cached chats alone may not cause one).
+3. Return to Web Slim and click **Подключиться / обновить список** once **while monitoring is still active**.
+4. Stop and download. Review the UI's coverage warnings; if official conversation-list was not observed, the comparison remains incomplete.
+
+The observed official requests include an **Authorization** header name, while the extension api.mjs explicitly constructs only **Accept** and **ChatGPT-Account-ID**. This is a concrete architectural difference, but no token values have been captured and no credential replay or access-control bypass is implemented. The experiment must not be used to extract account credentials or circumvent API access policy.
