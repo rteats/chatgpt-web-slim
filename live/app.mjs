@@ -2,6 +2,7 @@ import {ChatReader,conversationListPath} from "./api.mjs";
 import {runSiteProbe} from "./site-probe.mjs";
 import {listItems,visibleMessages,pageState} from "./model.mjs";
 import {Diagnostics,errorClass} from "./diagnostics.mjs";
+import {initNetworkPanel} from "./net-panel.mjs";
 const diagnostics=new Diagnostics();
 const api=new ChatReader({onDiagnostic:(event,details)=>diagnostics.add(event,details)}),$=s=>document.querySelector(s);
 const connect=$("#connect"),more=$("#more"),older=$("#older"),plugins=$("#plugins");
@@ -234,3 +235,6 @@ refreshAccountStatus();
 $("#export-logs").addEventListener("click",()=>diagnostics.download());
 window.addEventListener("error",()=>diagnostics.add("runtime_error",{operation:"unknown"}));
 window.addEventListener("unhandledrejection",()=>diagnostics.add("unhandled_rejection",{operation:"unknown"}));
+
+// Monitoring is always off by default; user must explicitly start it.
+initNetworkPanel();
