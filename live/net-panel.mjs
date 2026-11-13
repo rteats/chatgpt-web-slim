@@ -20,7 +20,7 @@ export function initNetworkPanel(){
   const count=Number(next?.count)||0;
   const running=next?.enabled===true;
   start.disabled=running;stop.disabled=!running;
-  download.disabled=running||count===0;
+  download.disabled=running||(count===0&&!(next?.clientEvidence?.started>0));
   clear.disabled=running;tabsControl.disabled=running;refresh.disabled=running;
   inform(running?
    "Запись идёт. Переключись на указанную вкладку ChatGPT, открой 2–3 диалога, затем вернись в Web Slim и нажми «Подключиться». После этого останови запись.":
@@ -36,6 +36,21 @@ export function initNetworkPanel(){
    return pair.method+" "+pair.route+": сайт "+a+", Web Slim "+b+
     ", отличий имён "+extra;
   });
+  const coverage=next?.coverage??{};
+  if(!running&&count>0){
+   if(!coverage.officialListObserved)
+    summaryLines.unshift("Нет запроса списка диалогов от официального сайта. Обновите обычную вкладку при следующей записи.");
+   if(!coverage.extensionClientStarted)
+    summaryLines.unshift("Нет подтверждения нажатия «Подключиться» в Web Slim во время записи.");
+   else if(!coverage.extensionListObserved)
+    summaryLines.unshift("Web Slim запрашивал список, но chrome.webRequest не зафиксировал его заголовки.");
+  }
+  if((next?.clientEvidence?.started??0)>0){
+   const evidence=next.clientEvidence;
+   summaryLines.push("Web Slim: запросов "+evidence.started+", ответов "+
+    evidence.succeeded+", ошибок "+evidence.failed+
+    ", последний HTTP "+(evidence.lastStatus??"?"));
+  }
   summary.textContent=summaryLines.join("\n");
  };
  const getState=async()=>{
