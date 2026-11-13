@@ -135,11 +135,9 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
   switch(message?.type){
    case "WEB_SLIM_AUDIT_CLIENT_NOTE": {
     // Trusted extension-owned page only; no URLs/headers/IDs/data bodies accepted.
-    let trusted=false;
-    try{
-     const source=new URL(sender.url);
-     trusted=source.origin===EXTENSION_ORIGIN&&source.pathname==="/index.html";
-    }catch{}
+    // For extension:// URLs, URL.origin can be an opaque "null" in some
+    // runtimes. Compare against Chrome's exact extension-page URL instead.
+    const trusted=sender.url===chrome.runtime.getURL("index.html");
     if(!trusted)return {ok:false,error:"untrusted_sender"};
     if(!audit.enabled||maybeStopExpired())return {ok:true};
     if(message.operation!=="conversations")return {ok:false,error:"unsupported_operation"};
