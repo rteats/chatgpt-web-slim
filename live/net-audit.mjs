@@ -106,15 +106,16 @@ export function compareObservations(records){
  }
  return [...groups.values()].map(group=>{
   const lastA=group.official.at(-1),lastB=group.extension.at(-1);
+  const comparable=Boolean(lastA&&lastB);
   const headerA=new Set(lastA?.headerNames??[]),headerB=new Set(lastB?.headerNames??[]);
   const queryA=new Set(lastA?.queryNames??[]),queryB=new Set(lastB?.queryNames??[]);
   return {
    route:group.route,method:group.method,
-   officialCount:group.official.length,extensionCount:group.extension.length,
-   onlyOfficialHeaders:[...headerA].filter(x=>!headerB.has(x)).sort(),
-   onlyExtensionHeaders:[...headerB].filter(x=>!headerA.has(x)).sort(),
-   onlyOfficialQueryNames:[...queryA].filter(x=>!queryB.has(x)).sort(),
-   onlyExtensionQueryNames:[...queryB].filter(x=>!queryA.has(x)).sort(),
+   comparable,officialCount:group.official.length,extensionCount:group.extension.length,
+   onlyOfficialHeaders:comparable?[...headerA].filter(x=>!headerB.has(x)).sort():[],
+   onlyExtensionHeaders:comparable?[...headerB].filter(x=>!headerA.has(x)).sort():[],
+   onlyOfficialQueryNames:comparable?[...queryA].filter(x=>!queryB.has(x)).sort():[],
+   onlyExtensionQueryNames:comparable?[...queryB].filter(x=>!queryA.has(x)).sort():[],
    officialLastStatus:lastA?.status??null,extensionLastStatus:lastB?.status??null
   };
  });
