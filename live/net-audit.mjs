@@ -6,9 +6,22 @@
 const ALLOWED_QUERY_KEYS=new Set([
  "limit","offset","order","expand","exclude_conversation_origin","hide_snorlax",
  "is_archived","is_starred","num_turns","include_has_versions","before",
- "includeextensions","cursor","page_size","include_generated_titles"
+ "includeextensions","cursor","page_size","include_generated_titles","conversation_origin"
 ]);
 const HEADER_NAME_RE=/^[a-z][a-z0-9-]{0,63}$/;
+// Names seen in the supplied first-party HAR plus stable browser headers.
+// Unknown names are intentionally omitted (not assumed non-sensitive).
+const HEADER_ALLOWLIST=new Set([
+ "accept","accept-encoding","accept-language","authorization","cache-control",
+ "chatgpt-account-id","content-type","cookie","origin","originator","pragma",
+ "priority","referer","sec-ch-ua","sec-ch-ua-arch","sec-ch-ua-bitness",
+ "sec-ch-ua-full-version","sec-ch-ua-full-version-list","sec-ch-ua-mobile",
+ "sec-ch-ua-model","sec-ch-ua-platform","sec-ch-ua-platform-version",
+ "sec-fetch-dest","sec-fetch-mode","sec-fetch-site","user-agent",
+ "oai-device-id","oai-did","oai-language",
+ "x-openai-codex-window-type","x-openai-rate-limit-join-workspace",
+ "x-openai-rejoin-pro-cta","x-openai-web-frontend"
+]);
 const METHODS=new Set(["GET","POST","PUT"]);
 const SOURCE_NAMES=new Set(["official","extension"]);
 
@@ -40,7 +53,7 @@ export function describeEndpoint(rawUrl){
 export function headerNames(headers){
  if(!Array.isArray(headers))return [];
  return [...new Set(headers.map(h=>String(h?.name??"").trim().toLowerCase())
-  .filter(name=>HEADER_NAME_RE.test(name)))].sort().slice(0,80);
+  .filter(name=>HEADER_NAME_RE.test(name)&&HEADER_ALLOWLIST.has(name)))].sort();
 }
 
 export function classifySource({initiator,tabId},extensionOrigin,selectedTabId){
