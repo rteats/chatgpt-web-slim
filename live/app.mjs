@@ -4,7 +4,15 @@ import {listItems,visibleMessages,pageState} from "./model.mjs";
 import {Diagnostics,errorClass} from "./diagnostics.mjs";
 import {initNetworkPanel} from "./net-panel.mjs";
 const diagnostics=new Diagnostics();
-const api=new ChatReader({onDiagnostic:(event,details)=>diagnostics.add(event,details)}),$=s=>document.querySelector(s);
+const api=new ChatReader({onDiagnostic:(event,details)=>{
+ diagnostics.add(event,details);
+ if(details?.operation==="conversations"&&
+    ["request_started","request_succeeded","request_failed"].includes(event)){
+  // Fixed-schema, no payload/URLs/headers or identifiers cross this boundary.
+  chrome.runtime.sendMessage({type:"WEB_SLIM_AUDIT_CLIENT_NOTE",
+   operation:"conversations",phase:event,status:details?.status??null}).catch(()=>{});
+ }
+}}),$=s=>document.querySelector(s);
 const connect=$("#connect"),more=$("#more"),older=$("#older"),plugins=$("#plugins");
 const sessionButton=$("#check-session"),sessionInfo=$("#session-info");
 const compareButton=$("#compare"),compareResult=$("#compare-result");
