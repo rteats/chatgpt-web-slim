@@ -66,6 +66,14 @@ test("compares official and extension visible headers without values",()=>{
  assert.deepEqual(comparison.onlyOfficialQueryNames,["offset"]);
  assert.deepEqual(comparison.onlyExtensionHeaders,[]);
 });
+test("unmatched request sources remain incomparable, never invent missing headers",()=>{
+ const [record]=compareObservations([{route:"conversations.list",method:"GET",
+  source:"official",headerNames:["authorization"],queryNames:["limit"],status:200}]);
+ assert.equal(record.comparable,false);
+ assert.deepEqual(record.onlyOfficialHeaders,[]);
+ assert.deepEqual(record.onlyOfficialQueryNames,[]);
+ assert.equal(record.extensionCount,0);
+});
 test("monitor never activates without explicit start and saves only sanitized records",async()=>{
  const storage={},callbacks={};
  const on=(name)=>({addListener(fn){callbacks[name]=fn;}});
@@ -88,9 +96,9 @@ test("monitor never activates without explicit start and saves only sanitized re
   chrome,URL,Date,Number,Map,Promise,Math,
   readFirstPartyAccountHeader,startObservation,completeObservation,compareObservations
  });
- const send=type=>new Promise(resolve=>callbacks.onMessage({
-  type,tabId:7
- },{id:"extension-id"},resolve));
+ const send=(type,fields={},senderUrl=ORIGIN+"/index.html")=>new Promise(resolve=>callbacks.onMessage({
+  type,tabId:7,...fields
+ },{id:"extension-id",url:senderUrl},resolve));
  const makeDetails=(requestId,source)=>({
   requestId,initiator:source,tabId:7,method:"GET",timeStamp:100,
   url:FIRSTPARTY+"/backend-api/conversations?limit=20",
@@ -112,9 +120,25 @@ test("monitor never activates without explicit start and saves only sanitized re
  await Promise.resolve();
  callbacks.onCompleted({requestId:"ext",statusCode:200,timeStamp:150,
   responseHeaders:[{name:"Content-Type",value:"application/json"}]});
+ // Direct instrumentation proves a Web Slim GET was attempted even if
+ // webRequest omits extension-generated requests in a particular browser.
+ assert.equal((await send("WEB_SLIM_AUDIT_CLIENT_NOTE",{
+  operation:"conversations",phase:"request_started",userText:"SENSITIVE"
+ })).ok,true);
+ assert.equal((await send("WEB_SLIM_AUDIT_CLIENT_NOTE",{
+  operation:"conversations",phase:"request_succeeded",status:200
+ })).ok,true);
+ assert.equal((await send("WEB_SLIM_AUDIT_CLIENT_NOTE",{
+  operation:"conversations",phase:"request_started"
+ },ORIGIN+"/other.html")).ok,false);
  const stopped=await send("WEB_SLIM_AUDIT_STOP");
  assert.equal(stopped.ok,true);
  assert.equal(stopped.report.records.length,2);
+ assert.equal(stopped.report.clientEvidence.started,1);
+ assert.equal(stopped.report.clientEvidence.succeeded,1);
+ assert.equal(stopped.report.coverage.extensionClientStarted,true);
+ assert.equal(stopped.report.coverage.officialListObserved,true);
+ assert.doesNotMatch(JSON.stringify(stopped.report),/SENSITIVE|userText/);
  assert.deepEqual([...new Set(stopped.report.records.map(x=>x.source))].sort(),
   ["extension","official"]);
  assert.doesNotMatch(JSON.stringify(stopped.report),/PRIVATE|requestId|tabId|secret/);
