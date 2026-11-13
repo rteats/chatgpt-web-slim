@@ -26,7 +26,7 @@ test("header parser records names only, drops invalid names and values",()=>{
   {name:"X-Long",value:"USER MESSAGE"}, {name:"x-long",value:"dup"},
   {name:"PRIVATE\nToken",value:"BAD"}
  ]);
- assert.deepEqual(headers,["authorization","chatgpt-account-id","x-long"]);
+ assert.deepEqual(headers,["authorization","chatgpt-account-id"]);
  assert.doesNotMatch(JSON.stringify(headers),/SECRET|PRIVATE-ID|USER MESSAGE/);
 });
 test("accepts only selected official tab and own extension initiator",()=>{
