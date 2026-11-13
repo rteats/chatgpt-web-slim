@@ -6,8 +6,9 @@ const EXTENSION_ORIGIN=chrome.runtime.getURL("").replace(/\/$/,"");
 const AUDIT_KEY="webSlimNetworkAudit";
 const MAX_ENTRIES=80;
 const MAX_DURATION_MS=180000;
+const EMPTY_EVIDENCE=()=>({started:0,succeeded:0,failed:0,lastStatus:null});
 const pending=new Map();
-let audit={enabled:false,tabId:null,startedAt:0,endedReason:null,entries:[]};
+let audit={enabled:false,tabId:null,startedAt:0,endedReason:null,entries:[],clientEvidence:EMPTY_EVIDENCE()};
 let writes=Promise.resolve();
 const ready=chrome.storage.session.get(AUDIT_KEY).then(data=>{
  const stored=data[AUDIT_KEY];
@@ -16,7 +17,8 @@ const ready=chrome.storage.session.get(AUDIT_KEY).then(data=>{
    enabled:stored.enabled===true,tabId:Number.isInteger(stored.tabId)?stored.tabId:null,
    startedAt:Number(stored.startedAt)||0,
    endedReason:typeof stored.endedReason==="string"?stored.endedReason:null,
-   entries:stored.entries.slice(-MAX_ENTRIES)
+   entries:stored.entries.slice(-MAX_ENTRIES),
+   clientEvidence:{...EMPTY_EVIDENCE(),...(stored.clientEvidence??{})}
   };
  }
 }).catch(()=>{});
@@ -30,12 +32,18 @@ function save(){
 function publicReport(){
  return {
   schema:"web-slim-network-v1",
-  version:"0.2.6",
+  version:"0.2.7",
   enabled:audit.enabled,
   endedReason:audit.endedReason,
   limit:MAX_ENTRIES,
   windowSeconds:MAX_DURATION_MS/1000,
   count:audit.entries.length,
+  clientEvidence:{...audit.clientEvidence},
+  coverage:{
+   officialListObserved:audit.entries.some(x=>x.source==="official"&&x.route==="conversations.list"),
+   extensionListObserved:audit.entries.some(x=>x.source==="extension"&&x.route==="conversations.list"),
+   extensionClientStarted:audit.clientEvidence.started>0
+  },
   records:audit.entries.slice(),
   comparisons:compareObservations(audit.entries),
   privacy:"No URLs, URL values, header values, request or response bodies, account IDs, cookies, tokens or browser tab IDs"
@@ -125,6 +133,29 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
  const execute=async()=>{
   await ready;
   switch(message?.type){
+   case "WEB_SLIM_AUDIT_CLIENT_NOTE": {
+    // Trusted extension-owned page only; no URLs/headers/IDs/data bodies accepted.
+    let trusted=false;
+    try{
+     const source=new URL(sender.url);
+     trusted=source.origin===EXTENSION_ORIGIN&&source.pathname==="/index.html";
+    }catch{}
+    if(!trusted)return {ok:false,error:"untrusted_sender"};
+    if(!audit.enabled||maybeStopExpired())return {ok:true};
+    if(message.operation!=="conversations")return {ok:false,error:"unsupported_operation"};
+    const phase=message.phase;
+    if(phase==="request_started")audit.clientEvidence.started++;
+    else if(phase==="request_succeeded"){
+     audit.clientEvidence.succeeded++;
+     audit.clientEvidence.lastStatus=Number(message.status)===200?200:null;
+    }else if(phase==="request_failed"){
+     audit.clientEvidence.failed++;
+     const code=Number(message.status);
+     audit.clientEvidence.lastStatus=Number.isInteger(code)&&code>=100&&code<=599?code:null;
+    }else return {ok:false,error:"unsupported_phase"};
+    await save();
+    return {ok:true};
+   }
    case "WEB_SLIM_GET_ACCOUNT": {
     const value=await chrome.storage.session.get("capturedAccountId");
     return {accountId:value.capturedAccountId??null};
@@ -141,7 +172,7 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
     let valid=false;
     try{valid=new URL(tab?.url).origin==="https://chatgpt.com";}catch{}
     if(!valid)return {ok:false,error:"not_chatgpt_tab"};
-    audit={enabled:true,tabId,startedAt:Date.now(),endedReason:null,entries:[]};
+    audit={enabled:true,tabId,startedAt:Date.now(),endedReason:null,entries:[],clientEvidence:EMPTY_EVIDENCE()};
     pending.clear();
     await save();
     return {ok:true,report:publicReport()};
@@ -153,7 +184,7 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
    }
    case "WEB_SLIM_AUDIT_CLEAR": {
     audit.enabled=false;pending.clear();audit={enabled:false,tabId:null,startedAt:0,
-      endedReason:"cleared",entries:[]};
+      endedReason:"cleared",entries:[],clientEvidence:EMPTY_EVIDENCE()};
     await save();
     return {ok:true,report:publicReport()};
    }
