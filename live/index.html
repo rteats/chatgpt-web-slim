@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ru"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>Web Slim — Live Reader</title>
+<link rel="stylesheet" href="style.css"><script type="module" src="app.mjs"></script>
+</head><body><div class="shell"><aside class="sidebar">
+<h1>Web Slim <small>Live Reader</small></h1>
+<p>Отдельный интерфейс без JavaScript исходного ChatGPT</p>
+<button id="open-original" type="button">Открыть ChatGPT для привязки аккаунта</button>
+<p id="account-status" aria-live="polite">Проверка привязки аккаунта…</p>
+<button id="connect" type="button">Подключиться / обновить список</button>
+<button id="check-session" type="button">Проверить текущую сессию</button>
+<p id="session-info" aria-live="polite"></p>
+<label>Поиск<input id="search" type="search" placeholder="Название диалога · Ctrl+K"></label>
+<p id="status" role="status" aria-live="polite">Запросов пока не было.</p>
+<details id="network-panel" class="network-panel">
+ <summary>Сетевой анализатор (метаданные запросов)</summary>
+ <p class="audit-note">Запись только по команде. Фиксируются имена заголовков, названия параметров URL и HTTP-статусы — не значения, переписки или токены.</p>
+ <label for="network-tab">Вкладка обычного ChatGPT</label>
+ <select id="network-tab" aria-label="Выберите вкладку ChatGPT"></select>
+ <button id="network-refresh-tabs" type="button">Обновить вкладки</button>
+ <div class="audit-actions">
+  <button id="network-start" type="button">Начать запись</button>
+  <button id="network-stop" type="button" disabled>Остановить</button>
+  <button id="network-download" type="button" disabled>Скачать отчёт</button>
+  <button id="network-clear" type="button">Очистить</button>
+ </div>
+ <p id="network-status" role="status">Мониторинг выключен.</p>
+ <pre id="network-summary" aria-live="polite"></pre>
+</details>
+<button id="compare" type="button">Диагностика: сравнить сайт и расширение</button>
+<p id="compare-result" aria-live="polite">Сравнение выполняется только по нажатию; содержимое чатов не сохраняется.</p>
+<button id="plugins" type="button">Показать установленные плагины</button>
+<p id="plugin-summary"></p>
+<button id="export-logs" type="button">Скачать диагностический лог (.json)</button>
+<p class="log-notice">В файл не попадают сообщения, идентификаторы чатов, cookies или токены. При необходимости Console и HAR собираются отдельно.</p>
+<nav id="conversations" aria-label="Диалоги"></nav>
+<button id="more" type="button" hidden>Загрузить ещё 20 диалогов</button>
+</aside><main class="main">
+<header><h2 id="title">Выберите диалог</h2><span id="count"></span></header>
+<button id="older" type="button" hidden>Загрузить старые сообщения</button>
+<section id="messages" tabindex="0" aria-label="Сообщения"></section>
+<footer>Прототип · Только чтение · Отправка пока не поддерживается</footer>
+</main></div></body></html>

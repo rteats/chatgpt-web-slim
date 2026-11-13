@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "ChatGPT Web Slim — Live Reader",
+  "version": "0.2.7",
+  "description": "Opt-in read-only lightweight conversation UI and passive SSE protocol experiments.",
+  "host_permissions": [
+    "https://chatgpt.com/*"
+  ],
+  "action": {
+    "default_popup": "launch.html",
+    "default_title": "Web Slim Live Reader"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://chatgpt.com"
+  },
+  "permissions": [
+    "webRequest",
+    "storage",
+    "scripting"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  }
+}
